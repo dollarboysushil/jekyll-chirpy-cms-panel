@@ -2,9 +2,19 @@ import { sql } from '@vercel/postgres';
 import { Draft, DraftImage, PublishedPost } from '@/types';
 import { JSONContent } from '@tiptap/react';
 
+// Verify database connection
+if (!process.env.POSTGRES_URL) {
+  console.error('Missing POSTGRES_URL environment variable');
+}
+
 // Initialize database tables
 export async function initializeDatabase() {
   try {
+    // Verify connection is available
+    if (!process.env.POSTGRES_URL) {
+      throw new Error('POSTGRES_URL environment variable is not set. Please add it in Vercel Dashboard.');
+    }
+
     // Create drafts table
     await sql`
       CREATE TABLE IF NOT EXISTS drafts (

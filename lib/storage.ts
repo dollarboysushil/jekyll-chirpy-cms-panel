@@ -9,7 +9,12 @@ export async function uploadBlob(
   options?: { contentType?: string }
 ): Promise<{ url: string }> {
   try {
-    const blob = await put(path, content, {
+    // Convert Buffer to Blob if needed for Vercel Blob compatibility
+    const uploadContent = Buffer.isBuffer(content) 
+      ? new Blob([new Uint8Array(content)], { type: options?.contentType || 'application/octet-stream' })
+      : content;
+
+    const blob = await put(path, uploadContent, {
       access: 'public',
       ...options,
     });

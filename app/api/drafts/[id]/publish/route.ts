@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { getDraft, markPublished } from '@/lib/db';
 import { createPost } from '@/lib/github';
 import { tiptapToMarkdown } from '@/lib/markdown-converter';
+import { deleteDraftImages } from '@/lib/storage';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -57,6 +58,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Mark as published in database
     await markPublished(id, githubPath, sha);
+
+    // Delete draft images from blob storage (they're now published to GitHub)
+    await deleteDraftImages(id);
 
     return NextResponse.json({
       success: true,

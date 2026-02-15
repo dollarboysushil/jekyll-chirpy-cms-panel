@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getDraft, updateDraft, deleteDraft } from '@/lib/db';
+import { deleteDraftImages } from '@/lib/storage';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -66,6 +67,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     await requireAuth();
     const { id } = await params;
+    
+    // Delete images from blob storage before deleting draft
+    await deleteDraftImages(id);
+    
+    // Delete draft (and database image records via CASCADE)
     await deleteDraft(id);
     
     return NextResponse.json({ success: true });

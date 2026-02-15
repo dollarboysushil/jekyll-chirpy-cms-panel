@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TiptapEditor } from '@/components/editor/TiptapEditor';
 import { AutoSave } from '@/components/editor/AutoSave';
-import { ArrowLeft, Trash2, Send, FileText, Eye, Code2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Trash2, Send, FileText, Eye, Code2, AlertCircle, Columns } from 'lucide-react';
 import { tiptapToMarkdown, markdownToTiptap, hasFrontmatter } from '@/lib/markdown-converter';
 
 type EditorMode = 'visual' | 'markdown' | 'preview';
@@ -30,6 +30,7 @@ export default function EditorPage() {
   const [markdownContent, setMarkdownContent] = useState('');
   const [editorMode, setEditorMode] = useState<EditorMode>('markdown');
   const [hasYamlFrontmatter, setHasYamlFrontmatter] = useState(false);
+  const [isSplitView, setIsSplitView] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -109,7 +110,14 @@ export default function EditorPage() {
     const response = await fetch('/api/images/upload', {
       method: 'POST',
       body: formData,
+      credentials: 'include',
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Upload failed:', response.status, errorText);
+      throw new Error(`Upload failed: ${response.status}`);
+    }
 
     const data = await response.json();
     if (!data.success) {
@@ -117,6 +125,53 @@ export default function EditorPage() {
     }
 
     return data.data.url;
+  };
+
+  const handleMarkdownImagePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const blob = items[i].getAsFile();
+        if (!blob) continue;
+
+        // Capture selection and textarea reference before async operation
+        const textarea = e.currentTarget;
+        const start = textarea?.selectionStart ?? markdownContent.length;
+        const end = textarea?.selectionEnd ?? markdownContent.length;
+
+        try {
+          // Create a proper File object with a name and type
+          const timestamp = Date.now();
+          const extension = blob.type.split('/')[1] || 'png';
+          const fileName = `pasted-image-${timestamp}.${extension}`;
+          const file = new File([blob], fileName, { type: blob.type });
+
+          const imageUrl = await handleImageUpload(file);
+          const text = markdownContent;
+          const before = text.substring(0, start);
+          const after = text.substring(end);
+          const imageMarkdown = `![Image](${imageUrl})`;
+          
+          setMarkdownContent(before + imageMarkdown + after);
+          
+          // Set cursor position after the inserted image
+          setTimeout(() => {
+            if (textarea) {
+              textarea.selectionStart = textarea.selectionEnd = start + imageMarkdown.length;
+              textarea.focus();
+            }
+          }, 0);
+        } catch (error) {
+          console.error('Failed to upload pasted image:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          alert(`Failed to upload image: ${errorMessage}\nCheck console for details.`);
+        }
+        break;
+      }
+    }
   };
 
   const handlePublish = async () => {
@@ -254,23 +309,25 @@ export default function EditorPage() {
       </header>
 
       {/* Editor Content */}
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className={isSplitView && editorMode === 'markdown' ? '' : 'container mx-auto px-4 py-8 max-w-4xl'}>
         {/* Metadata */}
-        <div className="mb-8">
-          <Input
-            type="text"
-            label="Filename (will be saved to _posts directory)"
-            value={filename}
-            onChange={(e) => setFilename(e.target.value)}
-            placeholder="e.g., my-awesome-post.md or 2024-01-15-my-post.md"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Specify the filename for your post (must end with .md). Jekyll convention: YYYY-MM-DD-title.md
-          </p>
-        </div>
+        {!(isSplitView && editorMode === 'markdown') && (
+          <div className="mb-8">
+            <Input
+              type="text"
+              label="Filename (will be saved to _posts directory)"
+              value={filename}
+              onChange={(e) => setFilename(e.target.value)}
+              placeholder="e.g., my-awesome-post.md or 2024-01-15-my-post.md"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Specify the filename for your post (must end with .md). Jekyll convention: YYYY-MM-DD-title.md
+            </p>
+          </div>
+        )}
 
         {/* Editor */}
-        <div className="mb-8">
+        <div className={isSplitView && editorMode === 'markdown' ? '' : 'mb-8'}>
           {/* Editor Mode Tabs */}
           <div className="flex gap-2 border-b border-gray-200 mb-4">
             <button
@@ -336,15 +393,24 @@ export default function EditorPage() {
           {/* Markdown Editor */}
           {editorMode === 'markdown' && (
             <div className="space-y-4">
-              <div className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-50 px-4 py-2 border-b flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    Write your post in markdown format
-                  </p>
-                  <details className="text-xs text-gray-500">
-                    <summary className="cursor-pointer hover:text-gray-700">Quick Reference</summary>
-                    <div className="absolute mt-2 p-3 bg-white border rounded-lg shadow-lg text-xs whitespace-pre-line z-10">
-                      {`# Heading 1
+              {!isSplitView ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-2 border-b flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      Write your post in markdown format
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsSplitView(true)}
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+                      >
+                        <Columns size={14} />
+                        Split View
+                      </button>
+                      <details className="text-xs text-gray-500">
+                        <summary className="cursor-pointer hover:text-gray-700">Quick Reference</summary>
+                        <div className="absolute mt-2 p-3 bg-white border rounded-lg shadow-lg text-xs whitespace-pre-line z-10 right-0">
+                          {`# Heading 1
 ## Heading 2
 ### Heading 3
 
@@ -368,17 +434,78 @@ Code block
 \`\`\`
 
 ---
-Horizontal rule`}
+Horizontal rule
+
+Paste images directly!`}
+                        </div>
+                      </details>
                     </div>
-                  </details>
+                  </div>
+                  <textarea
+                    value={markdownContent}
+                    onChange={(e) => setMarkdownContent(e.target.value)}
+                    onPaste={handleMarkdownImagePaste}
+                    className="w-full p-4 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ height: 'calc(100vh - 280px)' }}
+                    placeholder="# Your Post Title&#10;&#10;Start writing your post in markdown...&#10;&#10;## Subheading&#10;&#10;Your content here...&#10;&#10;You can paste images directly!"
+                  />
                 </div>
-                <textarea
-                  value={markdownContent}
-                  onChange={(e) => setMarkdownContent(e.target.value)}
-                  className="w-full h-[600px] p-4 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="# Your Post Title&#10;&#10;Start writing your post in markdown...&#10;&#10;## Subheading&#10;&#10;Your content here..."
-                />
-              </div>
+              ) : (
+                <div className="fixed inset-0 top-[73px] bg-background z-20">
+                  <div className="bg-gray-50 px-4 py-2 border-b flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      Split View - Edit &amp; Preview
+                    </p>
+                    <button
+                      onClick={() => setIsSplitView(false)}
+                      className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                    >
+                      Exit Split View
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 divide-x h-[calc(100vh-73px-49px)]">
+                    {/* Left: Markdown Editor */}
+                    <div className="overflow-hidden flex flex-col bg-white">
+                      <div className="bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 border-b">
+                        Markdown
+                      </div>
+                      <textarea
+                        value={markdownContent}
+                        onChange={(e) => setMarkdownContent(e.target.value)}
+                        onPaste={handleMarkdownImagePaste}
+                        className="flex-1 p-4 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-auto"
+                        placeholder="# Your Post Title&#10;&#10;Start writing...&#10;&#10;Paste images directly!"
+                      />
+                    </div>
+                    {/* Right: Preview */}
+                    <div className="overflow-auto flex flex-col bg-white">
+                      <div className="bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 border-b">
+                        Preview
+                      </div>
+                      <div className="flex-1 p-8 prose prose-lg max-w-none overflow-auto">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeRaw]}
+                          components={{
+                            img: ({ node, src, alt, ...props }) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img 
+                                src={src} 
+                                alt={alt || ''} 
+                                {...props}
+                                className="rounded-lg shadow-sm max-w-full h-auto"
+                                loading="lazy"
+                              />
+                            ),
+                          }}
+                        >
+                          {markdownContent}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

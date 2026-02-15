@@ -7,14 +7,16 @@ import { useDebounce } from '@/hooks/useDebounce';
 interface AutoSaveProps {
   draftId: string;
   content: JSONContent;
-  title: string;
+  filename?: string;
+  markdownSource?: string;
 }
 
-export function AutoSave({ draftId, content, title }: AutoSaveProps) {
+export function AutoSave({ draftId, content, filename, markdownSource }: AutoSaveProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const debouncedContent = useDebounce(content, 5000);
-  const debouncedTitle = useDebounce(title, 5000);
+  const debouncedFilename = useDebounce(filename, 5000);
+  const debouncedMarkdownSource = useDebounce(markdownSource, 5000);
 
   useEffect(() => {
     const save = async () => {
@@ -27,7 +29,8 @@ export function AutoSave({ draftId, content, title }: AutoSaveProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             content: debouncedContent,
-            title: debouncedTitle,
+            ...(debouncedFilename && { filename: debouncedFilename }),
+            ...(debouncedMarkdownSource !== undefined && { markdown_source: debouncedMarkdownSource }),
           }),
         });
         setLastSaved(new Date());
@@ -39,7 +42,7 @@ export function AutoSave({ draftId, content, title }: AutoSaveProps) {
     };
 
     save();
-  }, [debouncedContent, debouncedTitle, draftId]);
+  }, [debouncedContent, debouncedFilename, debouncedMarkdownSource, draftId]);
 
   return (
     <div className="text-sm text-muted-foreground">

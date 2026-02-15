@@ -21,7 +21,9 @@ export async function initializeDatabase() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         title TEXT NOT NULL DEFAULT 'Untitled',
         slug TEXT,
+        filename TEXT,
         content JSONB NOT NULL DEFAULT '{"type":"doc","content":[{"type":"paragraph"}]}',
+        markdown_source TEXT,
         cover_image TEXT,
         tags TEXT[] DEFAULT '{}',
         category TEXT,
@@ -30,6 +32,18 @@ export async function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT NOW(),
         status TEXT DEFAULT 'draft'
       )
+    `;
+
+    // Add filename column if it doesn't exist (for existing databases)
+    await sql`
+      ALTER TABLE drafts 
+      ADD COLUMN IF NOT EXISTS filename TEXT
+    `;
+    
+    // Add markdown_source column if it doesn't exist
+    await sql`
+      ALTER TABLE drafts 
+      ADD COLUMN IF NOT EXISTS markdown_source TEXT
     `;
 
     // Create draft_images table
@@ -155,6 +169,14 @@ export async function updateDraft(
       updates.push(`status = $${valueIndex++}`);
       values.push(data.status);
     }
+    if (data.filename !== undefined) {
+      updates.push(`filename = $${valueIndex++}`);
+      values.push(data.filename);
+    }
+    if (data.markdown_source !== undefined) {
+      updates.push(`markdown_source = $${valueIndex++}`);
+      values.push(data.markdown_source);
+    }
 
     updates.push(`updated_at = NOW()`);
     values.push(id);
@@ -177,6 +199,10 @@ export async function updateDraft(
 // Delete draft
 export async function deleteDraft(id: string): Promise<void> {
   try {
+    // First delete any published_posts records referencing this draft
+    await sql`DELETE FROM published_posts WHERE draft_id = ${id}`;
+    
+    // Then delete the draft (draft_images will cascade delete automatically)
     await sql`DELETE FROM drafts WHERE id = ${id}`;
   } catch (error) {
     console.error('Error deleting draft:', error);

@@ -136,3 +136,84 @@ export async function verifyGitHubAccess(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Get all posts from _posts directory
+ */
+export async function getAllPosts() {
+  try {
+    const { data } = await octokit.repos.getContent({
+      owner,
+      repo,
+      path: '_posts',
+    });
+
+    if (!Array.isArray(data)) {
+      throw new Error('Expected directory listing');
+    }
+
+    // Filter for markdown files and map to post info
+    const posts = data
+      .filter((file) => file.name.endsWith('.md'))
+      .map((file) => ({
+        name: file.name,
+        path: file.path,
+        sha: file.sha,
+        url: file.html_url,
+        downloadUrl: file.download_url,
+      }))
+      .sort((a, b) => b.name.localeCompare(a.name)); // Sort by date (newest first)
+
+    return posts;
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    throw new Error('Failed to fetch posts from GitHub');
+  }
+}
+
+/**
+ * Get a single post content
+ */
+export async function getPost(filename: string) {
+  try {
+    const { data } = await octokit.repos.getContent({
+      owner,
+      repo,
+      path: `_posts/${filename}`,
+    });
+
+    if (Array.isArray(data) || !('content' in data)) {
+      throw new Error('Expected file content');
+    }
+
+    // Decode base64 content
+    const content = Buffer.from(data.content, 'base64').toString('utf-8');
+
+    return {
+      name: data.name,
+      path: data.path,
+      sha: data.sha,
+      content,
+      url: data.html_url,
+    };
+  } catch (error) {
+    console.error('Error fetching post:', error);
+    throw new Error('Failed to fetch post from GitHub');
+  }
+}
+
+/**
+ * Update a post in _posts directory
+ */
+export async function updatePost(filename: string, content: string, commitMessage?: string) {
+  try {
+    const path = `_posts/${filename}`;
+    const message = commitMessage || `Update post: ${filename}`;
+    
+    const url = await uploadFile(path, content, message);
+    return { success: true, url };
+  } catch (error) {
+    console.error('Error updating post:', error);
+    throw new Error('Failed to update post on GitHub');
+  }
+}

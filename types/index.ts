@@ -4,7 +4,9 @@ export interface Draft {
   id: string;
   title: string;
   slug: string | null;
+  filename: string | null;
   content: JSONContent;
+  markdown_source: string | null;
   cover_image: string | null;
   tags: string[];
   category: string | null;

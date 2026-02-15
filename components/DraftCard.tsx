@@ -1,65 +1,141 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { Draft } from '@/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
-import { FileText, Calendar, Tag } from 'lucide-react';
+import { FileText, Calendar, Tag, CheckCircle2, Edit3, Github, Trash2 } from 'lucide-react';
+import { Button } from './ui/Button';
 
 interface DraftCardProps {
-  draft: Draft;
+  draft: Draft & { isGitHubOnly?: boolean };
+  onDelete?: () => void;
 }
 
-export function DraftCard({ draft }: DraftCardProps) {
+export function DraftCard({ draft, onDelete }: DraftCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const formattedDate = new Date(draft.updated_at).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
 
+  const isPublished = draft.status === 'published';
+  const isGitHubOnly = 'isGitHubOnly' in draft && draft.isGitHubOnly;
+  
+  // GitHub-only posts go to post viewer, others go to editor
+  const href = isGitHubOnly && draft.filename 
+    ? `/posts/${encodeURIComponent(draft.filename)}` 
+    : `/editor/${draft.id}`;
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draft.filename) {
+      alert('Cannot delete: filename not found');
+      return;
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to delete "${draft.filename}"?\n\n` +
+      'This will permanently delete the post from your GitHub repository. This action cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/posts/${encodeURIComponent(draft.filename)}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Post deleted successfully!');
+        if (onDelete) onDelete();
+      } else {
+        alert(`Failed to delete post: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete post. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <Link href={`/editor/${draft.id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-xl mb-2">
-                {draft.title || 'Untitled'}
-              </CardTitle>
-              {draft.excerpt && (
-                <CardDescription className="line-clamp-2">
-                  {draft.excerpt}
-                </CardDescription>
+    <div className="relative">
+      <Link href={href} className="block">
+        <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0 pr-2">
+                <CardTitle className="text-lg mb-2 line-clamp-2 break-words">
+                  {draft.filename ? draft.filename.replace('.md', '') : draft.title || 'Untitled'}
+                </CardTitle>
+                {draft.excerpt && (
+                  <CardDescription className="line-clamp-2">
+                    {draft.excerpt}
+                  </CardDescription>
+                )}
+              </div>
+              <div className="flex-shrink-0">
+                {isGitHubOnly ? (
+                  <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full flex items-center gap-1 whitespace-nowrap">
+                    <Github size={12} />
+                    GitHub
+                  </span>
+                ) : isPublished ? (
+                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center gap-1 whitespace-nowrap">
+                    <CheckCircle2 size={12} />
+                    Published
+                  </span>
+                ) : (
+                  <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full flex items-center gap-1 whitespace-nowrap">
+                    <Edit3 size={12} />
+                    Draft
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground min-w-0 flex-1">
+                <div className="flex items-center gap-1 whitespace-nowrap">
+                  <Calendar size={14} />
+                  <span>{formattedDate}</span>
+                </div>
+                {draft.filename && (
+                  <div className="flex items-center gap-1 min-w-0">
+                    <FileText size={14} className="flex-shrink-0" />
+                    <span className="text-xs truncate">{draft.filename}</span>
+                  </div>
+                )}
+              </div>
+              {isPublished && (
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-shrink-0 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                  title="Delete post"
+                  type="button"
+                >
+                  {isDeleting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-600 border-t-transparent" />
+                  ) : (
+                    <Trash2 size={16} />
+                  )}
+                </button>
               )}
             </div>
-            {draft.status === 'published' && (
-              <span className="ml-2 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                Published
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Calendar size={14} />
-              <span>{formattedDate}</span>
-            </div>
-            {draft.category && (
-              <div className="flex items-center gap-1">
-                <FileText size={14} />
-                <span>{draft.category}</span>
-              </div>
-            )}
-            {draft.tags && draft.tags.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Tag size={14} />
-                <span>{draft.tags.slice(0, 3).join(', ')}</span>
-                {draft.tags.length > 3 && <span>+{draft.tags.length - 3}</span>}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+          </CardContent>
+        </Card>
+      </Link>
+    </div>
   );
 }

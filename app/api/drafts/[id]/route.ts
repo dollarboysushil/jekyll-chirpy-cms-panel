@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getDraft, updateDraft, deleteDraft } from '@/lib/db';
 import { deleteDraftImages } from '@/lib/storage';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { validateUUID, validateDraftUpdate } from '@/lib/validation';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -12,6 +14,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await requireAuth();
     const { id } = await params;
+    
+    // Validate UUID
+    if (!validateUUID(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid draft ID' },
+        { status: 400 }
+      );
+    }
+    
     const draft = await getDraft(id);
     
     if (!draft) {
@@ -42,11 +53,52 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     await requireAuth();
     const { id } = await params;
+    
+    // Rate limiting: 60 updates per minute per IP
+    const rateLimit = rateLimitMiddleware(request, {
+      maxRequests: 60,
+      windowSeconds: 60,
+    });
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Too many update requests. Please slow down.' 
+        },
+        { 
+          status: 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
+    
+    // Validate UUID
+    if (!validateUUID(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid draft ID' },
+        { status: 400 }
+      );
+    }
+    
     const data = await request.json();
+    
+    // Validate draft update data
+    try {
+      validateDraftUpdate(data);
+    } catch (error: any) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 }
+      );
+    }
     
     const updatedDraft = await updateDraft(id, data);
     
-    return NextResponse.json({ success: true, data: updatedDraft });
+    return NextResponse.json(
+      { success: true, data: updatedDraft },
+      { headers: rateLimit.headers }
+    );
   } catch (error: any) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json(
@@ -67,6 +119,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     await requireAuth();
     const { id } = await params;
+    
+    // Validate UUID
+    if (!validateUUID(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid draft ID' },
+        { status: 400 }
+      );
+    }
     
     // Delete images from blob storage before deleting draft
     await deleteDraftImages(id);

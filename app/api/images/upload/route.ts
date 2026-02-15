@@ -3,11 +3,32 @@ import { requireAuth } from '@/lib/auth';
 import { processUploadedImage } from '@/lib/image-processor';
 import { uploadDraftImage } from '@/lib/storage';
 import { saveDraftImage } from '@/lib/db';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { validateImageFile, validateUUID } from '@/lib/validation';
 
 // POST - Upload and process image
 export async function POST(request: NextRequest) {
   try {
     await requireAuth();
+
+    // Rate limiting: 20 uploads per 5 minutes per IP
+    const rateLimit = rateLimitMiddleware(request, {
+      maxRequests: 20,
+      windowSeconds: 300,
+    });
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Too many upload requests. Please try again in ${rateLimit.retryAfter} seconds.` 
+        },
+        { 
+          status: 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -27,9 +48,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!file.type.startsWith('image/')) {
+    // Validate UUID format
+    if (!validateUUID(draftId)) {
       return NextResponse.json(
-        { success: false, error: 'File must be an image' },
+        { success: false, error: 'Invalid draft ID format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate image file
+    try {
+      validateImageFile(file);
+    } catch (error: any) {
+      return NextResponse.json(
+        { success: false, error: error.message },
         { status: 400 }
       );
     }

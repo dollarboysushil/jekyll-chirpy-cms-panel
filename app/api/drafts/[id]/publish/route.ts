@@ -4,6 +4,8 @@ import { getDraft, markPublished } from '@/lib/db';
 import { createPost } from '@/lib/github';
 import { tiptapToMarkdown } from '@/lib/markdown-converter';
 import { deleteDraftImages } from '@/lib/storage';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { validateUUID, validateMarkdownFilename } from '@/lib/validation';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,6 +16,33 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     await requireAuth();
     const { id } = await params;
+
+    // Rate limiting: 10 publishes per hour per IP
+    const rateLimit = rateLimitMiddleware(request, {
+      maxRequests: 10,
+      windowSeconds: 3600,
+    });
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Too many publish requests. Please try again in ${Math.ceil(rateLimit.retryAfter! / 60)} minutes.` 
+        },
+        { 
+          status: 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
+
+    // Validate UUID
+    if (!validateUUID(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid draft ID' },
+        { status: 400 }
+      );
+    }
 
     // Get draft
     const draft = await getDraft(id);
@@ -32,14 +61,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    if (!draft.filename.endsWith('.md')) {
+    let filename: string;
+    try {
+      filename = validateMarkdownFilename(draft.filename);
+    } catch (error: any) {
       return NextResponse.json(
-        { success: false, error: 'Filename must end with .md extension' },
+        { success: false, error: error.message },
         { status: 400 }
       );
     }
-
-    const filename = draft.filename;
 
     // Get markdown content
     // If user wrote in markdown mode, use that directly
@@ -68,7 +98,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         githubPath,
         commitSha: sha,
       },
-    });
+    }, { headers: rateLimit.headers });
   } catch (error: any) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json(

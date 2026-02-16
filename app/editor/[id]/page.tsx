@@ -11,10 +11,17 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TiptapEditor } from '@/components/editor/TiptapEditor';
 import { AutoSave } from '@/components/editor/AutoSave';
-import { ArrowLeft, Trash2, Send, FileText, Eye, Code2, AlertCircle, Columns } from 'lucide-react';
+import { ArrowLeft, Trash2, Send, FileText, Eye, Code2, AlertCircle, Columns, Image as ImageIcon, X, Copy, Check } from 'lucide-react';
 import { tiptapToMarkdown, markdownToTiptap, hasFrontmatter } from '@/lib/markdown-converter';
 
 type EditorMode = 'visual' | 'markdown' | 'preview';
+
+interface PendingImage {
+  id: string;
+  file: File;
+  preview: string;
+  githubPath: string;
+}
 
 export default function EditorPage() {
   const params = useParams();
@@ -34,6 +41,8 @@ export default function EditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [copiedImageId, setCopiedImageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (draftId) {
@@ -66,7 +75,15 @@ export default function EditorPage() {
         setDraft(fetchedDraft);
         setFilename(fetchedDraft.filename || '');
         setContent(fetchedDraft.content);
-        setMarkdownContent(tiptapToMarkdown(fetchedDraft.content));
+        
+        // If markdown_source exists, use it; otherwise convert from content
+        if (fetchedDraft.markdown_source) {
+          setMarkdownContent(fetchedDraft.markdown_source);
+          // Set to markdown mode if we have markdown source
+          setEditorMode('markdown');
+        } else {
+          setMarkdownContent(tiptapToMarkdown(fetchedDraft.content));
+        }
       }
     } catch (error) {
       console.error('Failed to fetch draft:', error);
@@ -174,6 +191,89 @@ export default function EditorPage() {
     }
   };
 
+  // Generate GitHub path for image
+  const generateGitHubImagePath = (file: File): string => {
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const extension = file.name.split('.').pop() || 'webp';
+    const fileName = `${timestamp}-${randomStr}.${extension}`;
+    return `assets/img/post_media/${fileName}`;
+  };
+
+  // Handle image paste in GitHub upload section
+  const handleGitHubImagePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const blob = items[i].getAsFile();
+        if (!blob) continue;
+
+        const timestamp = Date.now();
+        const extension = blob.type.split('/')[1] || 'webp';
+        const fileName = `pasted-image-${timestamp}.${extension}`;
+        const file = new File([blob], fileName, { type: blob.type });
+
+        const preview = URL.createObjectURL(file);
+        const githubPath = generateGitHubImagePath(file);
+        const id = `${Date.now()}-${Math.random()}`;
+
+        setPendingImages((prev) => [
+          ...prev,
+          { id, file, preview, githubPath },
+        ]);
+        break;
+      }
+    }
+  };
+
+  // Handle file selection from input
+  const handleGitHubImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) return;
+
+      const preview = URL.createObjectURL(file);
+      const githubPath = generateGitHubImagePath(file);
+      const id = `${Date.now()}-${Math.random()}`;
+
+      setPendingImages((prev) => [
+        ...prev,
+        { id, file, preview, githubPath },
+      ]);
+    });
+
+    // Reset input
+    e.target.value = '';
+  };
+
+  // Remove pending image
+  const removePendingImage = (id: string) => {
+    setPendingImages((prev) => {
+      const image = prev.find((img) => img.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.preview);
+      }
+      return prev.filter((img) => img.id !== id);
+    });
+  };
+
+  // Copy markdown syntax to clipboard
+  const copyMarkdownSyntax = async (githubPath: string, imageId: string) => {
+    const markdown = `![Image](/${githubPath})`;
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopiedImageId(imageId);
+      setTimeout(() => setCopiedImageId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+
   const handlePublish = async () => {
     if (!filename) {
       alert('Please specify a filename (e.g., my-post.md)');
@@ -191,6 +291,25 @@ export default function EditorPage() {
 
     setIsPublishing(true);
     try {
+      // Upload pending images to GitHub first
+      if (pendingImages.length > 0) {
+        for (const image of pendingImages) {
+          const formData = new FormData();
+          formData.append('file', image.file);
+          formData.append('path', image.githubPath);
+
+          const uploadResponse = await fetch('/api/github-image', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            throw new Error(`Failed to upload ${image.githubPath}: ${errorData.error}`);
+          }
+        }
+      }
+
       // First update the filename
       await fetch(`/api/drafts/${draftId}`, {
         method: 'PATCH',
@@ -207,6 +326,9 @@ export default function EditorPage() {
 
       const data = await response.json();
       if (data.success) {
+        // Clear pending images on successful publish
+        pendingImages.forEach((img) => URL.revokeObjectURL(img.preview));
+        setPendingImages([]);
         alert('Post published successfully!');
         router.push('/drafts');
       } else {
@@ -214,7 +336,8 @@ export default function EditorPage() {
       }
     } catch (error) {
       console.error('Publish error:', error);
-      alert('Failed to publish post. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to publish post: ${errorMessage}`);
     } finally {
       setIsPublishing(false);
     }
@@ -393,6 +516,104 @@ export default function EditorPage() {
           {/* Markdown Editor */}
           {editorMode === 'markdown' && (
             <div className="space-y-4">
+              {/* GitHub Image Upload Section */}
+              {!isSplitView && (
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  <div className="bg-blue-50 px-4 py-2 border-b flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-blue-600" />
+                      <p className="text-sm font-medium text-blue-900">
+                        GitHub Images - Paste or Upload
+                      </p>
+                    </div>
+                    <label className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer">
+                      Browse
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleGitHubImageSelect}
+                      />
+                    </label>
+                  </div>
+                  
+                  {pendingImages.length === 0 ? (
+                    <div
+                      onPaste={handleGitHubImagePaste}
+                      className="p-8 text-center border-2 border-dashed border-gray-300 m-4 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+                      tabIndex={0}
+                    >
+                      <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-600 mb-1">
+                        Click here and paste images (Ctrl+V / Cmd+V)
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Images will be uploaded to GitHub at: assets/img/post_media/
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-4 space-y-3">
+                      {pendingImages.map((image) => (
+                        <div
+                          key={image.id}
+                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border"
+                        >
+                          <img
+                            src={image.preview}
+                            alt="Preview"
+                            className="w-16 h-16 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 mb-1">
+                              {image.file.name}
+                            </p>
+                            <code className="text-xs text-gray-600 bg-white px-2 py-1 rounded border block truncate">
+                              /{image.githubPath}
+                            </code>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => copyMarkdownSyntax(image.githubPath, image.id)}
+                              className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                              title="Copy markdown syntax"
+                            >
+                              {copiedImageId === image.id ? (
+                                <>
+                                  <Check size={14} />
+                                  Copied!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={14} />
+                                  Copy
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => removePendingImage(image.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                              title="Remove image"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <div
+                        onPaste={handleGitHubImagePaste}
+                        className="p-4 text-center border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+                        tabIndex={0}
+                      >
+                        <p className="text-xs text-gray-600">
+                          Click here to paste more images
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {!isSplitView ? (
                 <div className="border rounded-lg overflow-hidden">
                   <div className="bg-gray-50 px-4 py-2 border-b flex items-center justify-between">

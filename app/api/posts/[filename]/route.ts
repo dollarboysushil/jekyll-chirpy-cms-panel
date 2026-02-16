@@ -3,6 +3,10 @@ import { getPost, updatePost, deleteFile } from '@/lib/github';
 import { requireAuth } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
 
+// Disable caching for this route to always fetch latest content
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface RouteParams {
   params: Promise<{ filename: string }>;
 }
@@ -17,7 +21,13 @@ export async function GET(
   try {
     const { filename } = await params;
     const post = await getPost(filename);
-    return NextResponse.json({ post });
+    return NextResponse.json({ post }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching post:', error);
     return NextResponse.json(

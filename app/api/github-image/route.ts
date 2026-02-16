@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Octokit } from '@octokit/rest';
+import { requireAuth } from '@/lib/auth';
 
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
@@ -76,5 +77,86 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'image/png',
       },
     });
+  }
+}
+
+/**
+ * POST /api/github-image - Upload image to GitHub repository
+ */
+export async function POST(request: NextRequest) {
+  try {
+    await requireAuth();
+
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const path = formData.get('path') as string;
+
+    if (!file) {
+      return NextResponse.json(
+        { error: 'File is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!path) {
+      return NextResponse.json(
+        { error: 'Path is required' },
+        { status: 400 }
+      );
+    }
+
+    // Convert file to buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentBase64 = buffer.toString('base64');
+
+    // Check if file exists to get SHA for update
+    let sha: string | undefined;
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner,
+        repo,
+        path,
+      });
+      if ('sha' in data) {
+        sha = data.sha;
+      }
+    } catch (error: any) {
+      // File doesn't exist, that's fine
+      if (error.status !== 404) {
+        throw error;
+      }
+    }
+
+    // Upload image to GitHub
+    const { data } = await octokit.repos.createOrUpdateFileContents({
+      owner,
+      repo,
+      path,
+      message: `Add image: ${path}`,
+      content: contentBase64,
+      ...(sha && { sha }),
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        path,
+        sha: data.commit.sha,
+        url: `/${path}`,
+      },
+    });
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    console.error('Error uploading image to GitHub:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to upload image to GitHub' },
+      { status: 500 }
+    );
   }
 }

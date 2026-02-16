@@ -146,6 +146,7 @@ export async function getAllPosts() {
       owner,
       repo,
       path: '_posts',
+      ref: 'main', // Explicitly fetch from main branch
     });
 
     if (!Array.isArray(data)) {
@@ -180,6 +181,7 @@ export async function getPost(filename: string) {
       owner,
       repo,
       path: `_posts/${filename}`,
+      ref: 'main', // Explicitly fetch from main branch
     });
 
     if (Array.isArray(data) || !('content' in data)) {

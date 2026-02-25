@@ -272,3 +272,23 @@ image:
 **Built with ❤️ for the Jekyll Chirpy community**
 
 **No more local editing. Write from anywhere. Deploy instantly.**
+
+---
+
+# ⚠️ Disclaimer & Notice
+
+This project is heavily built with **vibe coding**. While the development process was fueled by pure intuition and high energy, the codebase may reflect that experimental nature.
+
+### 🛡️ Security & Liability
+
+- **Use at your own risk:** I am not responsible for any security-related problems, data leaks, or bugs that may occur.
+- **No Audits:** This software has not undergone a formal security review. Please exercise caution before deploying it in a production environment.
+
+### 🛠️ Issues & Feedback
+
+If you find any problems—security-related or otherwise—please let me know so I can attempt to fix the vibes:
+
+- **GitHub:** Create a new Issue
+- **Contact:** Reach out to me directly **@dollarboysushil on X(twitter)**
+
+---

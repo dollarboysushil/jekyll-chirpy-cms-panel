@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Draft } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { DraftCard } from '@/components/DraftCard';
-import { Plus, LogOut, FileText, Filter } from 'lucide-react';
+import { Plus, LogOut, Filter } from 'lucide-react';
 
 type FilterType = 'all' | 'draft' | 'published';
 
@@ -142,14 +141,8 @@ export default function DraftsPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">My Posts</h1>
+          <h1 className="text-2xl font-bold">All Posts</h1>
           <div className="flex gap-2">
-            <Link href="/posts">
-              <Button variant="secondary">
-                <FileText size={18} className="mr-2" />
-                GitHub Posts
-              </Button>
-            </Link>
             <Button onClick={handleCreateDraft} isLoading={isCreating}>
               <Plus size={18} className="mr-2" />
               New Draft

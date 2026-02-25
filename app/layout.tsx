@@ -6,8 +6,8 @@ import '@/lib/env-check'; // Validate environment variables on startup
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Jekyll CMS Panel',
-  description: 'Personal CMS for Jekyll Blog',
+  title: 'Jekyll Chirpy CMS Panel',
+  description: 'Modern cloud-based CMS for Jekyll Chirpy blogs - Edit, manage, and publish posts from anywhere with rich text editing, image optimization, and seamless GitHub integration.',
 };
 
 export default function RootLayout({

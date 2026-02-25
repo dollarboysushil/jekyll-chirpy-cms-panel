@@ -1,7 +1,24 @@
 {
-  "name": "jekyll-cms-panel",
+  "name": "jekyll-chirpy-cms-panel",
   "version": "1.0.0",
-  "private": true,
+  "description": "Modern cloud-based CMS for Jekyll Chirpy blogs hosted on Vercel",
+  "author": "Sushil",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dollarboysushil/CMS.git"
+  },
+  "keywords": [
+    "jekyll",
+    "chirpy",
+    "cms",
+    "blog",
+    "vercel",
+    "nextjs",
+    "github",
+    "markdown",
+    "editor"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

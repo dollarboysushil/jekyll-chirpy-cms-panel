@@ -330,7 +330,7 @@ export default function EditorPage() {
         pendingImages.forEach((img) => URL.revokeObjectURL(img.preview));
         setPendingImages([]);
         alert('Post published successfully!');
-        router.push('/drafts');
+        router.push('/home');
       } else {
         alert(`Failed to publish: ${data.error}`);
       }
@@ -355,7 +355,7 @@ export default function EditorPage() {
       });
 
       if (response.ok) {
-        router.push('/drafts');
+        router.push('/home');
       } else {
         alert('Failed to delete draft');
       }
@@ -380,8 +380,8 @@ export default function EditorPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Draft not found</p>
-          <Button onClick={() => router.push('/drafts')}>
-            Back to Drafts
+          <Button onClick={() => router.push('/home')}>
+            Back to All Posts
           </Button>
         </div>
       </div>
@@ -398,7 +398,7 @@ export default function EditorPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push('/drafts')}
+                onClick={() => router.push('/home')}
               >
                 <ArrowLeft size={18} />
               </Button>

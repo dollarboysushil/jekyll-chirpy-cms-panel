@@ -28,7 +28,7 @@ function LoginForm() {
       const data = await response.json();
 
       if (data.success) {
-        const redirect = searchParams.get('redirect') || '/drafts';
+        const redirect = searchParams.get('redirect') || '/home';
         router.push(redirect);
         router.refresh();
       } else {
@@ -45,7 +45,7 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl">CMS Login</CardTitle>
+          <CardTitle className="text-3xl">Jekyll Chirpy CMS</CardTitle>
           <CardDescription>
             Enter your password to access the panel
           </CardDescription>
@@ -83,7 +83,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl">CMS Login</CardTitle>
+            <CardTitle className="text-3xl">Jekyll Chirpy CMS</CardTitle>
             <CardDescription>
               Enter your password to access the panel
             </CardDescription>

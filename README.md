@@ -1,61 +1,102 @@
-# Jekyll CMS Panel
+# Jekyll Chirpy CMS Panel 🚀
 
-A modern, self-hosted CMS panel for managing Jekyll blog posts with a rich text editor, image optimization, and seamless GitHub integration.
+A modern, cloud-based CMS panel for managing [Jekyll Chirpy](https://github.com/cotes2020/jekyll-theme-chirpy) blog posts. Edit, manage, and publish your blog posts from anywhere without the need for local Jekyll installation. Hosted entirely on Vercel's free tier with seamless GitHub integration.
 
-## Features
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dollarboysushil/Jekyll-chirpy-cms-panel)
 
-- 📝 **Rich Text Editor** - Tiptap-based Medium-style editor
-- 🖼️ **Image Optimization** - Automatic WebP conversion with Sharp
-- 💾 **Auto-Save** - Content saved every 5 seconds
-- 🚀 **GitHub Publishing** - One-click publish to Jekyll blog
-- 🔒 **Secure Authentication** - Token-based auth with middleware
-- 📦 **Vercel Integration** - Postgres database and Blob storage
-- 🎨 **Clean UI** - Tailwind CSS with responsive design
+## ✨ Why This CMS?
 
-## Tech Stack
+**No more local editing!** This CMSsolves the pain of editing Jekyll blogs locally by providing:
 
-- **Framework**: Next.js 14 (App Router, TypeScript)
-- **Database**: Vercel Postgres
-- **Storage**: Vercel Blob
-- **Editor**: Tiptap
-- **Styling**: Tailwind CSS
-- **GitHub**: Octokit
-- **Image Processing**: Sharp
-- **Markdown**: Turndown
+- ☁️ **100% Cloud-Based** - Edit from anywhere, any device
+- 🆓 **Completely Free** - Hosted on Vercel's generous free tier
+- 📝 **Rich Text Editor** - Medium-style WYSIWYG editing with Tiptap
+- 🖼️ **Smart Image Management** - Automatic WebP conversion & GitHub upload
+- 💾 **Auto-Save** - Never lose your work (saves every 5 seconds)
+- 🚀 **One-Click Publishing** - Direct publish to GitHub Pages
+- 🔒 **Secure** - Token-based authentication with comprehensive security features
+- 🎨 **Clean UI** - Modern, responsive design with Tailwind CSS
 
-## Setup Instructions
+## 🎬 Demo
 
-### 1. Install Dependencies
+![Jekyll Chirpy CMS Panel Demo](https://via.placeholder.com/800x450/4F46E5/FFFFFF?text=Demo+Screenshot)
 
-```bash
-npm install
+## 🏗️ Architecture
+
+```
+┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+│   Browser   │─────▶│    Vercel    │─────▶│   GitHub    │
+│  (Editor)   │      │  (Next.js)   │      │   (Blog)    │
+└─────────────┘      └──────────────┘      └─────────────┘
+                            │
+                            ├─▶ Postgres (Drafts)
+                            └─▶ Blob Storage (Temp Images)
 ```
 
-### 2. Environment Variables
+## 🚀 Quick Start
 
-Create a `.env` file in the root directory:
+### Prerequisites
+
+1. A GitHub account with a Jekyll Chirpy blog repository
+2. A Vercel account (free tier)
+3. That's it! No local dependencies needed.
+
+### One-Click Deploy
+
+1. Click the "Deploy with Vercel" button above
+2. Connect your GitHub account
+3. Follow the setup wizard below
+
+### Manual Setup
+
+#### 1. Clone & Deploy
+
+```bash
+git clone https://github.com/dollarboysushil/CMS.git
+cd CMS
+```
+
+Deploy to Vercel:
+
+```bash
+npm i -g vercel
+vercel
+```
+
+#### 2. Enable Vercel Postgres
+
+1. Go to your project in [Vercel Dashboard](https://vercel.com/dashboard)
+2. Navigate to **Storage** tab
+3. Click **Create Database** → **Postgres**
+4. Click **Connect** - This auto-injects all database environment variables
+
+#### 3. Enable Vercel Blob Storage
+
+1. In the same **Storage** tab
+2. Click **Create** → **Blob**
+3. This auto-injects `BLOB_READ_WRITE_TOKEN`
+
+#### 4. Create GitHub Personal Access Token
+
+1. Go to [GitHub Settings → Tokens](https://github.com/settings/tokens)
+2. Click **Generate new token (classic)**
+3. Name it: `Jekyll CMS Panel`
+4. Select scope: ✅ **repo** (Full control of repositories)
+5. Click **Generate token** and copy it
+
+#### 5. Configure Environment Variables
+
+Go to **Settings** → **Environment Variables** in Vercel and add:
 
 ```env
-# Vercel Postgres (auto-injected by Vercel)
-POSTGRES_URL=
-POSTGRES_PRISMA_URL=
-POSTGRES_URL_NON_POOLING=
-POSTGRES_USER=
-POSTGRES_HOST=
-POSTGRES_PASSWORD=
-POSTGRES_DATABASE=
+# GitHub Integration (Required)
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_REPO_OWNER=your-github-username
+GITHUB_REPO_NAME=your-blog-repo-name
 
-# Vercel Blob (auto-injected by Vercel)
-BLOB_READ_WRITE_TOKEN=
-
-# GitHub Integration
-GITHUB_TOKEN=your_github_personal_access_token
-GITHUB_REPO_OWNER=your_github_username
-GITHUB_REPO_NAME=your_jekyll_repo_name
-
-# Authentication
+# Authentication (Required)
 ADMIN_PASSWORD=your_secure_password
-AUTH_SECRET=your_random_secret_key
+AUTH_SECRET=generate_with_openssl_rand_base64_32
 ```
 
 **Generate AUTH_SECRET:**
@@ -64,40 +105,296 @@ AUTH_SECRET=your_random_secret_key
 openssl rand -base64 32
 ```
 
-### 3. Create GitHub Personal Access Token
+#### 6. Initialize Database
 
-1. Go to GitHub Settings → Developer settings → Personal access tokens
-2. Generate new token (classic)
-3. Select scope: `repo` (Full control of private repositories)
-4. Copy the token and add to `.env`
+After deployment, visit:
 
-### 4. Initialize Database
-
-Run the setup endpoint to create database tables:
-
-```bash
-# After deploying to Vercel or running locally
-curl http://localhost:3000/api/setup
-# or visit in browser: http://localhost:3000/api/setup
+```
+https://your-app.vercel.app/api/setup
 ```
 
-### 5. Run Development Server
+This creates the necessary database tables.
+
+#### 7. Login & Start Writing!
+
+Visit your app URL and login with your `ADMIN_PASSWORD`.
+
+## 📖 Features in Detail
+
+### Rich Text Editor
+
+- **Tiptap-powered** WYSIWYG editor
+- Headings, bold, italic, lists, code blocks, blockquotes
+- Link insertion and editing
+- Image upload via drag-and-drop or paste
+- Markdown source view for power users
+
+### Image Management
+
+- **Automatic optimization**: WebP conversion at 85% quality
+- **Smart resizing**: Max width 1200px for web performance
+- **Organized structure**: Images stored in `assets/img/post_media/`
+- **Temporary storage**: Uses Vercel Blob until published
+- **Auto-cleanup**: Removes temp files after publishing
+
+### Publishing Workflow
+
+1. **Write** - Create drafts with rich text editor
+2. **Preview** - See how it looks before publishing
+3. **Publish** - One-click publish to GitHub
+   - Converts HTML to Markdown
+   - Uploads images to GitHub
+   - Generates Jekyll frontmatter
+   - Creates post file in `_posts/`
+   - Triggers GitHub Pages rebuild
+
+### Three Views for Every Post
+
+- **All Posts** - See everything at a glance
+- **Drafts** - Work-in-progress posts
+- **Published** - Live posts on your blog
+
+### Security Features
+
+- JWT authentication with httpOnly cookies
+- Rate limiting on all endpoints
+- Input validation and sanitization
+- Security headers (CSP, HSTS, etc.)
+- Middleware route protection
+
+## 🗂️ Project Structure
+
+```
+├── app/
+│   ├── api/
+│   │   ├── auth/              # Login, logout, verify
+│   │   ├── drafts/            # CRUD operations for drafts
+│   │   │   └── [id]/
+│   │   │       └── publish/   # Publish draft to GitHub
+│   │   ├── images/            # Image upload & optimization
+│   │   ├── posts/             # Fetch & manage GitHub posts
+│   │   ├── github-image/      # GitHub image proxy
+│   │   └── setup/             # Database initialization
+│   ├── home/                  # Main dashboard (all posts)
+│   ├── editor/[id]/           # Rich text editor
+│   ├── posts/[filename]/      # View published posts
+│   └── login/                 # Authentication
+├── components/
+│   ├── editor/                # Tiptap editor components
+│   │   ├── TiptapEditor.tsx   # Main editor
+│   │   ├── Toolbar.tsx        # Editor toolbar
+│   │   └── AutoSave.tsx       # Auto-save logic
+│   ├── ui/                    # Reusable UI components
+│   └── DraftCard.tsx          # Post card component
+├── lib/
+│   ├── db.ts                  # Database operations
+│   ├── storage.ts             # Vercel Blob operations
+│   ├── github.ts              # GitHub API integration
+│   ├── image-processor.ts     # Sharp image optimization
+│   ├── jekyll-generator.ts    # Markdown & frontmatter
+│   ├── markdown-converter.ts  # HTML ↔ Markdown
+│   ├── auth.ts                # JWT authentication
+│   ├── validation.ts          # Input validation
+│   └── rate-limit.ts          # Rate limiting
+├── types/
+│   └── index.ts               # TypeScript type definitions
+└── middleware.ts              # Route protection
+
+```
+
+## 🔧 Tech Stack
+
+| Category      | Technology                |
+| ------------- | ------------------------- |
+| **Framework** | Next.js 14 (App Router)   |
+| **Language**  | TypeScript                |
+| **Database**  | Vercel Postgres (Neon)    |
+| **Storage**   | Vercel Blob               |
+| **Editor**    | Tiptap (ProseMirror)      |
+| **Styling**   | Tailwind CSS              |
+| **GitHub**    | Octokit REST API          |
+| **Images**    | Sharp (WebP conversion)   |
+| **Markdown**  | Turndown, Unified, Remark |
+| **Auth**      | JWT (Jose)                |
+| **Hosting**   | Vercel (Free Tier)        |
+
+## 📋 API Routes
+
+### Authentication
+
+- `POST /api/auth/login` - Login with password
+- `POST /api/auth/logout` - Clear session
+- `GET /api/auth/verify` - Check auth status
+
+### Drafts
+
+- `GET /api/drafts` - List all drafts
+- `POST /api/drafts` - Create new draft
+- `GET /api/drafts/[id]` - Get draft by ID
+- `PATCH /api/drafts/[id]` - Update draft
+- `DELETE /api/drafts/[id]` - Delete draft
+- `POST /api/drafts/[id]/publish` - Publish to GitHub
+
+### Posts
+
+- `GET /api/posts` - List GitHub posts
+- `GET /api/posts/[filename]` - Get post content
+- `PUT /api/posts/[filename]` - Update published post
+- `DELETE /api/posts/[filename]` - Delete from GitHub
+
+### Images
+
+- `POST /api/images/upload` - Upload & optimize image
+- `GET /api/github-image` - Proxy GitHub images
+
+### Setup
+
+- `GET /api/setup` - Initialize database tables
+
+## 🔐 Security
+
+This CMS implements multiple security layers:
+
+- **Authentication**: JWT tokens with httpOnly cookies
+- **Rate Limiting**: Prevents brute force and abuse
+- **Input Validation**: Sanitizes all user inputs
+- **Security Headers**: CSP, HSTS, X-Frame-Options, etc.
+- **Environment Variables**: Secrets never exposed to client
+- **Middleware Protection**: All routes require authentication
+
+See [SECURITY.md](SECURITY.md) for detailed security information.
+
+## 🎨 Customization
+
+### Modify Jekyll Frontmatter
+
+Edit `lib/jekyll-generator.ts`:
+
+```typescript
+export function generateJekyllFrontmatter(draft: Draft): string {
+  // Customize your frontmatter format here
+  const frontmatter = {
+    title: draft.title,
+    date: formatDate(new Date()),
+    categories: [draft.category],
+    tags: draft.tags,
+    // Add custom fields
+  };
+  return ..;
+}
+```
+
+### Add Tiptap Extensions
+
+Edit `components/editor/TiptapEditor.tsx`:
+
+```typescript
+import CustomExtension from "@tiptap/extension-custom";
+
+const editor = useEditor({
+  extensions: [
+    StarterKit,
+    Image,
+    Link,
+    CustomExtension.configure({
+      /* options */
+    }),
+  ],
+});
+```
+
+### Customize Styles
+
+Edit `app/globals.css` - Look for the "Tiptap Editor Styles" section.
+
+## 🐛 Troubleshooting
+
+### Database Connection Failed
+
+- Ensure Vercel Postgres is properly connected
+- Check environment variables are set
+- Visit `/api/setup` to initialize tables
+
+### GitHub Push Failed
+
+- Verify GitHub token has `repo` scope
+- Check `GITHUB_REPO_OWNER` and `GITHUB_REPO_NAME` are correct
+- Ensure repository exists and is accessible
+
+### Image Upload Failed
+
+- Verify Vercel Blob is enabled
+- Check `BLOB_READ_WRITE_TOKEN` is set
+- Ensure image is under 10MB
+
+### Auto-Save Not Working
+
+- Check browser console for errors
+- Verify you're authenticated
+- Check network tab for failed requests
+
+## 📝 Development
+
+### Local Development
 
 ```bash
+# Clone repository
+git clone https://github.com/dollarboysushil/CMS.git
+cd CMS
+
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env
+# Edit .env with your values
+
+# Run development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Visit [http://localhost:3000](http://localhost:3000)
 
-### 6. Deploy to Vercel
+### Build for Production
 
 ```bash
-vercel
+npm run build
+npm start
 ```
 
-Or push to GitHub and connect with Vercel dashboard.
+## 🤝 Contributing
 
-## Usage
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## 🙏 Acknowledgments
+
+- [Jekyll](https://jekyllrb.com/) - Static site generator
+- [Chirpy Theme](https://github.com/cotes2020/jekyll-theme-chirpy) - Beautiful Jekyll theme
+- [Next.js](https://nextjs.org/) - React framework
+- [Vercel](https://vercel.com/) - Hosting platform
+- [Tiptap](https://tiptap.dev/) - Rich text editor
+- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
+
+## 📧 Support
+
+- **Issues**: [GitHub Issues](https://github.com/dollarboysushil/CMS/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/dollarboysushil/CMS/discussions)
+
+---
+
+**Built with ❤️ for the Jekyll Chirpy community**
+
+**No more local editing. Write from anywhere. Deploy instantly.**
 
 ### Creating a Post
 
@@ -269,4 +566,6 @@ For issues and questions, please create an issue on GitHub.
 
 ---
 
-Built with ❤️ using Next.js 14, Vercel, and Jekyll
+**Built with ❤️ for the Jekyll Chirpy community**
+
+**No more local editing. Write from anywhere. Deploy instantly.**

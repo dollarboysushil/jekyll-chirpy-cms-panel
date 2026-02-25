@@ -19,7 +19,12 @@ A modern, cloud-based CMS panel for managing [Jekyll Chirpy](https://github.com/
 
 ## 🎬 Demo
 
-![Jekyll Chirpy CMS Panel Demo](https://via.placeholder.com/800x450/4F46E5/FFFFFF?text=Demo+Screenshot)
+![alt text](./images/image.png)
+Dashboard to add, remove and manage all your posts.
+![alt text](./images/image1.png)
+Easy Markdown editor with preview, visual editor and option to paste image from clipboard
+![alt text](./images/image-1.png)
+Splitview markdown editor
 
 ## 🏗️ Architecture
 
@@ -162,45 +167,16 @@ Visit your app URL and login with your `ADMIN_PASSWORD`.
 - Security headers (CSP, HSTS, etc.)
 - Middleware route protection
 
-## 🗂️ Project Structure
+This CMS implements multiple security layers:
 
-```
-├── app/
-│   ├── api/
-│   │   ├── auth/              # Login, logout, verify
-│   │   ├── drafts/            # CRUD operations for drafts
-│   │   │   └── [id]/
-│   │   │       └── publish/   # Publish draft to GitHub
-│   │   ├── images/            # Image upload & optimization
-│   │   ├── posts/             # Fetch & manage GitHub posts
-│   │   ├── github-image/      # GitHub image proxy
-│   │   └── setup/             # Database initialization
-│   ├── home/                  # Main dashboard (all posts)
-│   ├── editor/[id]/           # Rich text editor
-│   ├── posts/[filename]/      # View published posts
-│   └── login/                 # Authentication
-├── components/
-│   ├── editor/                # Tiptap editor components
-│   │   ├── TiptapEditor.tsx   # Main editor
-│   │   ├── Toolbar.tsx        # Editor toolbar
-│   │   └── AutoSave.tsx       # Auto-save logic
-│   ├── ui/                    # Reusable UI components
-│   └── DraftCard.tsx          # Post card component
-├── lib/
-│   ├── db.ts                  # Database operations
-│   ├── storage.ts             # Vercel Blob operations
-│   ├── github.ts              # GitHub API integration
-│   ├── image-processor.ts     # Sharp image optimization
-│   ├── jekyll-generator.ts    # Markdown & frontmatter
-│   ├── markdown-converter.ts  # HTML ↔ Markdown
-│   ├── auth.ts                # JWT authentication
-│   ├── validation.ts          # Input validation
-│   └── rate-limit.ts          # Rate limiting
-├── types/
-│   └── index.ts               # TypeScript type definitions
-└── middleware.ts              # Route protection
+- **Authentication**: JWT tokens with httpOnly cookies
+- **Rate Limiting**: Prevents brute force and abuse
+- **Input Validation**: Sanitizes all user inputs
+- **Security Headers**: CSP, HSTS, X-Frame-Options, etc.
+- **Environment Variables**: Secrets never exposed to client
+- **Middleware Protection**: All routes require authentication
 
-```
+See [SECURITY.md](SECURITY.md) for detailed security information.
 
 ## 🔧 Tech Stack
 
@@ -217,121 +193,6 @@ Visit your app URL and login with your `ADMIN_PASSWORD`.
 | **Markdown**  | Turndown, Unified, Remark |
 | **Auth**      | JWT (Jose)                |
 | **Hosting**   | Vercel (Free Tier)        |
-
-## 📋 API Routes
-
-### Authentication
-
-- `POST /api/auth/login` - Login with password
-- `POST /api/auth/logout` - Clear session
-- `GET /api/auth/verify` - Check auth status
-
-### Drafts
-
-- `GET /api/drafts` - List all drafts
-- `POST /api/drafts` - Create new draft
-- `GET /api/drafts/[id]` - Get draft by ID
-- `PATCH /api/drafts/[id]` - Update draft
-- `DELETE /api/drafts/[id]` - Delete draft
-- `POST /api/drafts/[id]/publish` - Publish to GitHub
-
-### Posts
-
-- `GET /api/posts` - List GitHub posts
-- `GET /api/posts/[filename]` - Get post content
-- `PUT /api/posts/[filename]` - Update published post
-- `DELETE /api/posts/[filename]` - Delete from GitHub
-
-### Images
-
-- `POST /api/images/upload` - Upload & optimize image
-- `GET /api/github-image` - Proxy GitHub images
-
-### Setup
-
-- `GET /api/setup` - Initialize database tables
-
-## 🔐 Security
-
-This CMS implements multiple security layers:
-
-- **Authentication**: JWT tokens with httpOnly cookies
-- **Rate Limiting**: Prevents brute force and abuse
-- **Input Validation**: Sanitizes all user inputs
-- **Security Headers**: CSP, HSTS, X-Frame-Options, etc.
-- **Environment Variables**: Secrets never exposed to client
-- **Middleware Protection**: All routes require authentication
-
-See [SECURITY.md](SECURITY.md) for detailed security information.
-
-## 🎨 Customization
-
-### Modify Jekyll Frontmatter
-
-Edit `lib/jekyll-generator.ts`:
-
-```typescript
-export function generateJekyllFrontmatter(draft: Draft): string {
-  // Customize your frontmatter format here
-  const frontmatter = {
-    title: draft.title,
-    date: formatDate(new Date()),
-    categories: [draft.category],
-    tags: draft.tags,
-    // Add custom fields
-  };
-  return ..;
-}
-```
-
-### Add Tiptap Extensions
-
-Edit `components/editor/TiptapEditor.tsx`:
-
-```typescript
-import CustomExtension from "@tiptap/extension-custom";
-
-const editor = useEditor({
-  extensions: [
-    StarterKit,
-    Image,
-    Link,
-    CustomExtension.configure({
-      /* options */
-    }),
-  ],
-});
-```
-
-### Customize Styles
-
-Edit `app/globals.css` - Look for the "Tiptap Editor Styles" section.
-
-## 🐛 Troubleshooting
-
-### Database Connection Failed
-
-- Ensure Vercel Postgres is properly connected
-- Check environment variables are set
-- Visit `/api/setup` to initialize tables
-
-### GitHub Push Failed
-
-- Verify GitHub token has `repo` scope
-- Check `GITHUB_REPO_OWNER` and `GITHUB_REPO_NAME` are correct
-- Ensure repository exists and is accessible
-
-### Image Upload Failed
-
-- Verify Vercel Blob is enabled
-- Check `BLOB_READ_WRITE_TOKEN` is set
-- Ensure image is under 10MB
-
-### Auto-Save Not Working
-
-- Check browser console for errors
-- Verify you're authenticated
-- Check network tab for failed requests
 
 ## 📝 Development
 
@@ -362,39 +223,16 @@ npm run build
 npm start
 ```
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details
 
-## 🙏 Acknowledgments
-
-- [Jekyll](https://jekyllrb.com/) - Static site generator
-- [Chirpy Theme](https://github.com/cotes2020/jekyll-theme-chirpy) - Beautiful Jekyll theme
-- [Next.js](https://nextjs.org/) - React framework
-- [Vercel](https://vercel.com/) - Hosting platform
-- [Tiptap](https://tiptap.dev/) - Rich text editor
-- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
-
 ## 📧 Support
 
-- **Issues**: [GitHub Issues](https://github.com/dollarboysushil/CMS/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/dollarboysushil/CMS/discussions)
+- **Issues**: [GitHub Issues](https://github.com/dollarboysushil/jekyll-chirpy-cms-panel/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/dollarboysushil/jekyll-chirpy-cms-panel/discussions)
 
 ---
-
-**Built with ❤️ for the Jekyll Chirpy community**
-
-**No more local editing. Write from anywhere. Deploy instantly.**
 
 ### Creating a Post
 
@@ -430,141 +268,6 @@ image:
   alt: "Alt text"
 ---
 ```
-
-## Project Structure
-
-```
-panel/
-├── app/
-│   ├── api/
-│   │   ├── auth/          # Authentication endpoints
-│   │   ├── drafts/        # Draft CRUD operations
-│   │   ├── images/        # Image upload
-│   │   └── setup/         # Database initialization
-│   ├── drafts/            # Drafts list page
-│   ├── editor/[id]/       # Editor page
-│   ├── login/             # Login page
-│   └── layout.tsx         # Root layout
-├── components/
-│   ├── editor/            # Tiptap editor components
-│   ├── ui/                # Reusable UI components
-│   └── DraftCard.tsx      # Draft list item
-├── lib/
-│   ├── db.ts              # Database operations
-│   ├── storage.ts         # Blob storage operations
-│   ├── github.ts          # GitHub API integration
-│   ├── image-processor.ts # Image optimization
-│   ├── jekyll-generator.ts # Markdown generation
-│   └── auth.ts            # Authentication
-├── hooks/                 # Custom React hooks
-├── types/                 # TypeScript types
-└── middleware.ts          # Route protection
-
-```
-
-## API Routes
-
-### Authentication
-
-- `POST /api/auth/login` - Login with password
-- `POST /api/auth/logout` - Logout
-- `GET /api/auth/verify` - Verify authentication
-
-### Drafts
-
-- `GET /api/drafts` - List all drafts
-- `POST /api/drafts` - Create new draft
-- `GET /api/drafts/[id]` - Get single draft
-- `PATCH /api/drafts/[id]` - Update draft
-- `DELETE /api/drafts/[id]` - Delete draft
-- `POST /api/drafts/[id]/publish` - Publish to GitHub
-
-### Images
-
-- `POST /api/images/upload` - Upload and optimize image
-
-### Setup
-
-- `GET /api/setup` - Initialize database tables
-
-## Security Features
-
-- ✅ JWT-based authentication with httpOnly cookies
-- ✅ Middleware protection for all routes
-- ✅ GitHub token stored server-side only
-- ✅ Input validation and sanitization
-- ✅ Secure password verification
-
-## Image Processing
-
-Images are automatically:
-
-- Converted to WebP format (85% quality)
-- Resized to max width of 1200px
-- Optimized for web delivery
-- Uploaded to Vercel Blob (temporary)
-- Moved to GitHub on publish
-- Deleted from Blob after successful publish
-
-## Troubleshooting
-
-### Database Connection Error
-
-Ensure Vercel Postgres environment variables are set correctly.
-
-### GitHub Upload Failed
-
-- Check GitHub token has `repo` scope
-- Verify repository owner and name are correct
-- Ensure repository exists and is accessible
-
-### Image Upload Failed
-
-- Check Vercel Blob token is set
-- Ensure image file is valid
-- Check file size (keep under 4MB)
-
-### Auto-save Not Working
-
-- Check browser console for errors
-- Verify authentication token is valid
-- Ensure draft ID is correct
-
-## Development
-
-### Adding New Tiptap Extensions
-
-Edit `components/editor/TiptapEditor.tsx`:
-
-```typescript
-import NewExtension from "@tiptap/extension-new";
-
-// Add to extensions array
-const editor = useEditor({
-  extensions: [
-    // ... existing extensions
-    NewExtension,
-  ],
-});
-```
-
-### Customizing Jekyll Frontmatter
-
-Edit `lib/jekyll-generator.ts` to modify the frontmatter format.
-
-### Changing Editor Styles
-
-Edit `app/globals.css` under the "Tiptap Editor Styles" section.
-
-## License
-
-MIT
-
-## Support
-
-For issues and questions, please create an issue on GitHub.
-
----
 
 **Built with ❤️ for the Jekyll Chirpy community**
 

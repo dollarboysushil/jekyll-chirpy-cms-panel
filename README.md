@@ -286,9 +286,9 @@ This project is heavily built with **vibe coding**. While the development proces
 
 ### 🛠️ Issues & Feedback
 
-If you find any problems—security-related or otherwise—please let me know so I can attempt to fix the vibes:
+If you find any problems security related or otherwise please let me know so I can attempt to fix the vibes:
 
 - **GitHub:** Create a new Issue
-- **Contact:** Reach out to me directly **@dollarboysushil on X(twitter)**
+- **Contact:** Reach out to me directly **[@dollarboysushil on X(twitter)](https://x.com/dollarboysushil/)**
 
 ---

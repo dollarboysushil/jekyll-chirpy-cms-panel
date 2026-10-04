@@ -2,8 +2,16 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isAuthenticated } from './lib/auth';
 
-// Routes that don't require authentication
-const publicRoutes = ['/login', '/api/auth/login', '/api/setup'];
+// Routes that don't require authentication.
+// NOTE: /api/setup is intentionally NOT public - DB init must be authenticated.
+// Match exact paths or sub-paths only ("/login" must not match "/login-evil").
+const publicRoutes = ['/login', '/api/auth/login'];
+
+function isPublicRoute(pathname: string): boolean {
+  return publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route + '/')
+  );
+}
 
 /**
  * Add security headers to response
@@ -26,6 +34,9 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
   );
+
+  // This is a private admin panel - never index it
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
   
   // Content Security Policy
   response.headers.set(
@@ -37,9 +48,11 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
       "img-src 'self' data: https: blob:",
       "font-src 'self' data:",
       "connect-src 'self' https://*.vercel-storage.com https://*.neon.tech",
+      "object-src 'none'",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
+      'upgrade-insecure-requests',
     ].join('; ')
   );
   
@@ -58,9 +71,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check if route is public
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
-
-  if (isPublicRoute) {
+  if (isPublicRoute(pathname)) {
     const response = NextResponse.next();
     return addSecurityHeaders(response);
   }

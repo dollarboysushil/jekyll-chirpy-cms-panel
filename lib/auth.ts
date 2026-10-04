@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
+import { timingSafeEqual } from 'crypto';
 
 const AUTH_COOKIE_NAME = 'cms_auth_token';
 const TOKEN_MAX_AGE = 60 * 60 * 24 * 7; // 7 days in seconds
@@ -16,10 +17,34 @@ function getSecretKey(): Uint8Array {
 }
 
 /**
- * Verify password
+ * Verify password using constant-time comparison to prevent timing attacks.
+ * Fails closed when ADMIN_PASSWORD is not configured.
  */
 export function verifyPassword(password: string): boolean {
-  return password === process.env.ADMIN_PASSWORD;
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected || typeof password !== 'string' || password.length === 0) {
+    return false;
+  }
+
+  const a = Buffer.from(password);
+  const b = Buffer.from(expected);
+
+  // timingSafeEqual requires equal lengths; compare against a dummy buffer
+  // of the same length when lengths differ to keep timing consistent.
+  if (a.length !== b.length) {
+    try {
+      timingSafeEqual(a, Buffer.alloc(a.length));
+    } catch {
+      // ignore - used only to burn comparable time
+    }
+    return false;
+  }
+
+  try {
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 /**

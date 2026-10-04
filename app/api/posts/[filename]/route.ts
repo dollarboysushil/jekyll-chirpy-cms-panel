@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPost, updatePost, deleteFile } from '@/lib/github';
 import { requireAuth } from '@/lib/auth';
+import { validateMarkdownFilename, sanitizeString } from '@/lib/validation';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 import { sql } from '@vercel/postgres';
+
+// Max post body: 1MB (generous for markdown, blocks repo-DoS via giant commits)
+const MAX_POST_BYTES = 1024 * 1024;
 
 // Disable caching for this route to always fetch latest content
 export const dynamic = 'force-dynamic';
@@ -19,7 +24,17 @@ export async function GET(
   { params }: RouteParams
 ) {
   try {
-    const { filename } = await params;
+    await requireAuth();
+    const { filename: rawFilename } = await params;
+    let filename: string;
+    try {
+      filename = validateMarkdownFilename(decodeURIComponent(rawFilename));
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid filename' },
+        { status: 400 }
+      );
+    }
     const post = await getPost(filename);
     return NextResponse.json({ post }, {
       headers: {
@@ -29,9 +44,15 @@ export async function GET(
       },
     });
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Error fetching post:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch post' },
+      { error: 'Failed to fetch post' },
       { status: 500 }
     );
   }
@@ -45,23 +66,76 @@ export async function PUT(
   { params }: RouteParams
 ) {
   try {
-    const { filename } = await params;
+    await requireAuth();
+
+    // Rate limiting: 30 updates per 10 minutes per IP (editing saves)
+    const rateLimit = rateLimitMiddleware(request, {
+      maxRequests: 30,
+      windowSeconds: 600,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many update requests. Please slow down.' },
+        { status: 429, headers: rateLimit.headers }
+      );
+    }
+
+    const { filename: rawFilename } = await params;
+    let filename: string;
+    try {
+      filename = validateMarkdownFilename(decodeURIComponent(rawFilename));
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid filename' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { content, commitMessage } = body;
 
-    if (!content) {
+    if (typeof content !== 'string' || content.length === 0) {
       return NextResponse.json(
         { error: 'Content is required' },
         { status: 400 }
       );
     }
 
-    const result = await updatePost(filename, content, commitMessage);
-    return NextResponse.json({ success: true, data: result });
+    if (Buffer.byteLength(content, 'utf8') > MAX_POST_BYTES) {
+      return NextResponse.json(
+        { error: 'Content too large (max 1MB)' },
+        { status: 413 }
+      );
+    }
+
+    let safeMessage: string | undefined;
+    if (commitMessage !== undefined) {
+      try {
+        safeMessage = sanitizeString(String(commitMessage), 200);
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid commit message' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const result = await updatePost(filename, content, safeMessage);
+    return NextResponse.json(
+      { success: true, data: result },
+      { headers: rateLimit.headers }
+    );
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Error updating post:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to update post' },
+      { error: 'Failed to update post' },
       { status: 500 }
     );
   }
@@ -76,7 +150,16 @@ export async function DELETE(
 ) {
   try {
     await requireAuth();
-    const { filename } = await params;
+    const { filename: rawFilename } = await params;
+    let filename: string;
+    try {
+      filename = validateMarkdownFilename(decodeURIComponent(rawFilename));
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid filename' },
+        { status: 400 }
+      );
+    }
 
     // Delete from GitHub
     const githubPath = `_posts/${filename}`;
@@ -113,7 +196,7 @@ export async function DELETE(
     }
     console.error('Error deleting post:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to delete post' },
+      { success: false, error: 'Failed to delete post' },
       { status: 500 }
     );
   }

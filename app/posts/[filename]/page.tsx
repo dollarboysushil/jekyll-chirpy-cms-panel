@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import Image from 'next/image';
 import { Image as ImageIcon, X, Copy, Check } from 'lucide-react';
 
@@ -250,7 +251,7 @@ export default function PostViewPage() {
           <p className="font-semibold">Error loading post</p>
           <p className="text-sm mt-1">{error || 'Post not found'}</p>
           <Link
-            href="/posts"
+            href="/home"
             className="mt-4 inline-block px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Back to Posts
@@ -270,7 +271,7 @@ export default function PostViewPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <Link 
-                href="/posts"
+                href="/home"
                 className="text-gray-600 hover:text-gray-900"
               >
                 ← Back to Posts
@@ -402,7 +403,7 @@ export default function PostViewPage() {
               <div className="p-6 prose prose-lg max-w-none">
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
+                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
                   components={{
                     img: ({ node, src, alt, ...props }) => (
                       // eslint-disable-next-line @next/next/no-img-element

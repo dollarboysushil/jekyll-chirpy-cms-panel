@@ -81,6 +81,82 @@ export function validateUUID(id: string): boolean {
 }
 
 /**
+ * Validate that a post-login redirect target is a safe same-origin path.
+ * Rejects absolute URLs, protocol-relative URLs, backslashes, and control chars.
+ */
+export function getSafeRedirectTarget(input: unknown, fallback = '/home'): string {
+  if (typeof input !== 'string' || input.length === 0 || input.length > 2048) {
+    return fallback;
+  }
+
+  // Must start with a single leading slash (not "//" or "/\")
+  if (!input.startsWith('/') || input.startsWith('//') || input.startsWith('/\\')) {
+    return fallback;
+  }
+
+  // Reject backslashes, control characters, and encoded slashes tricks
+  if (input.includes('\\') || /[\r\n\t\x00-\x1f\x7f]/.test(input)) {
+    return fallback;
+  }
+
+  const lower = input.toLowerCase();
+  if (
+    lower.startsWith('javascript:') ||
+    lower.startsWith('data:') ||
+    lower.startsWith('vbscript:')
+  ) {
+    return fallback;
+  }
+
+  try {
+    // Resolve against a dummy origin to catch absolute URLs passed through
+    // (e.g. "/%5c%5cevil.com" style tricks); URL will normalize them.
+    const url = new URL(input, 'http://localhost');
+    const normalized = url.pathname + url.search + url.hash;
+    if (!normalized.startsWith('/') || normalized.startsWith('//')) {
+      return fallback;
+    }
+    return normalized;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Validate a GitHub image path for the image proxy/upload endpoints.
+ * Only allows files under assets/img/ with safe image extensions.
+ */
+export function validateGitHubImagePath(input: unknown): string {
+  if (typeof input !== 'string' || input.length === 0 || input.length > 500) {
+    throw new Error('Invalid image path');
+  }
+
+  const path = input.trim().replace(/^\/+/, '');
+
+  if (
+    path.includes('..') ||
+    path.includes('\\') ||
+    path.startsWith('/') ||
+    /[\r\n\x00]/.test(path) ||
+    !/^[A-Za-z0-9/_\-.]+$/.test(path)
+  ) {
+    throw new Error('Invalid image path');
+  }
+
+  if (!path.startsWith('assets/img/')) {
+    throw new Error('Image path must be under assets/img/');
+  }
+
+  const ext = path.split('.').pop()?.toLowerCase();
+  const allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  if (!ext || !allowed.includes(ext)) {
+    throw new Error('Invalid image type. Only JPG, PNG, GIF, and WebP images are allowed');
+  }
+
+  return path;
+}
+
+/**
  * Sanitize string input (prevent XSS)
  */
 export function sanitizeString(input: string, maxLength: number = 1000): string {
@@ -139,6 +215,44 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
  * Validate draft update data
  */
 export function validateDraftUpdate(data: any): void {
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Invalid update payload');
+  }
+
+  // Status transitions must go through the publish endpoint, not PATCH
+  if (data.status !== undefined) {
+    throw new Error('Status cannot be updated directly');
+  }
+
+  if (data.content !== undefined) {
+    if (typeof data.content !== 'object' || data.content === null || Array.isArray(data.content)) {
+      throw new Error('Content must be an object');
+    }
+    // Cap serialized size (~1MB) to prevent oversized documents
+    const serialized = JSON.stringify(data.content);
+    if (serialized.length > 1024 * 1024) {
+      throw new Error('Content too large (max 1MB)');
+    }
+  }
+
+  if (data.markdown_source !== undefined) {
+    if (typeof data.markdown_source !== 'string') {
+      throw new Error('Markdown source must be a string');
+    }
+    if (data.markdown_source.length > 1024 * 1024) {
+      throw new Error('Markdown source too large (max 1MB)');
+    }
+  }
+
+  if (data.cover_image !== undefined && data.cover_image !== null) {
+    if (typeof data.cover_image !== 'string') {
+      throw new Error('Cover image must be a string');
+    }
+    if (data.cover_image.length > 2048) {
+      throw new Error('Cover image URL too long');
+    }
+  }
+
   if (data.title !== undefined) {
     if (typeof data.title !== 'string') {
       throw new Error('Title must be a string');

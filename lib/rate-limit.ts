@@ -10,15 +10,20 @@ interface RateLimitEntry {
 // In-memory store (for serverless, consider Redis/Upstash for production)
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Clean up old entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(key);
+// Clean up old entries periodically. Guard against multiple timers in
+// serverless / HMR environments where this module may be re-evaluated.
+const globalForRateLimit = globalThis as unknown as { __rateLimitCleanup?: boolean };
+if (!globalForRateLimit.__rateLimitCleanup) {
+  globalForRateLimit.__rateLimitCleanup = true;
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of rateLimitStore.entries()) {
+      if (now > entry.resetTime) {
+        rateLimitStore.delete(key);
+      }
     }
-  }
-}, 60000); // Clean every minute
+  }, 60000); // Clean every minute
+}
 
 export interface RateLimitConfig {
   /** Maximum number of requests allowed within the window */

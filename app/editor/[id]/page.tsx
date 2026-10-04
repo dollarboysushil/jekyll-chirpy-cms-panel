@@ -6,6 +6,7 @@ import { JSONContent } from '@tiptap/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import { Draft } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -706,7 +707,7 @@ Paste images directly!`}
                       <div className="flex-1 p-8 prose prose-lg max-w-none overflow-auto">
                         <ReactMarkdown 
                           remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeRaw]}
+                          rehypePlugins={[rehypeRaw, rehypeSanitize]}
                           components={{
                             img: ({ node, src, alt, ...props }) => (
                               // eslint-disable-next-line @next/next/no-img-element
@@ -741,7 +742,7 @@ Paste images directly!`}
               <div className="p-8 prose prose-lg max-w-none">
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
+                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
                   components={{
                     img: ({ node, src, alt, ...props }) => (
                       // eslint-disable-next-line @next/next/no-img-element

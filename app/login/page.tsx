@@ -6,6 +6,25 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 
+function getSafeRedirect(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) {
+    return '/home';
+  }
+  if (raw.includes('\\') || /[\r\n\t\x00-\x1f\x7f]/.test(raw)) {
+    return '/home';
+  }
+  try {
+    const url = new URL(raw, 'http://localhost');
+    const normalized = url.pathname + url.search + url.hash;
+    if (!normalized.startsWith('/') || normalized.startsWith('//')) {
+      return '/home';
+    }
+    return normalized;
+  } catch {
+    return '/home';
+  }
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,7 +47,7 @@ function LoginForm() {
       const data = await response.json();
 
       if (data.success) {
-        const redirect = searchParams.get('redirect') || '/home';
+        const redirect = getSafeRedirect(searchParams.get('redirect'));
         router.push(redirect);
         router.refresh();
       } else {
@@ -61,6 +80,7 @@ function LoginForm() {
               error={error}
               autoFocus
               required
+              autoComplete="current-password"
             />
             <Button
               type="submit"
